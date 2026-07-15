@@ -1,9 +1,9 @@
 const { Events } = require("discord.js");
 const fs = require("node:fs");
 const path = require("node:path");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const Groq = require("groq-sdk");
 const { withRetry } = require("../../utils/withRetry");
-const geminiApiKey = process.env.GEMINI_API_KEY;
+const groqApiKey = process.env.GROQ_API_KEY;
 
 const ticketConfigPath = path.join(
   __dirname,
@@ -14,8 +14,8 @@ const activeTicketsPath = path.join(
   "../../database/active-tickets.json"
 );
 
-const genAI = new GoogleGenerativeAI(geminiApiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+const groq = new Groq({ apiKey: groqApiKey });
+const GROQ_MODEL = "llama-3.3-70b-versatile";
 const ticketHistories = new Map();
 
 module.exports = {
@@ -41,33 +41,30 @@ module.exports = {
       const config = JSON.parse(fs.readFileSync(ticketConfigPath, "utf-8"));
       const history = ticketHistories.get(message.channel.id) || [];
 
-      const chat = model.startChat({
-        systemInstruction: {
-          parts: [{ text: config.ai_prompt }],
-        },
-        history: history,
-      });
+      const messages = [
+        { role: "system", content: config.ai_prompt },
+        ...history,
+        { role: "user", content: message.content },
+      ];
 
-      const result = await withRetry(() => chat.sendMessage(message.content));
-      const response = await result.response;
-      const text = response.text();
+      const completion = await withRetry(() =>
+        groq.chat.completions.create({
+          model: GROQ_MODEL,
+          messages,
+        })
+      );
+      const text = completion.choices[0]?.message?.content;
 
       if (text) {
         await message.reply(text);
 
-        history.push({
-          role: "user",
-          parts: [{ text: message.content }],
-        });
-        history.push({
-          role: "model",
-          parts: [{ text }],
-        });
+        history.push({ role: "user", content: message.content });
+        history.push({ role: "assistant", content: text });
 
         ticketHistories.set(message.channel.id, history);
       }
     } catch (error) {
-      console.error("Erro na API do Google AI:", error);
+      console.error("Erro na API da Groq:", error);
       await message.reply(
         "Desculpe, não consegui processar sua mensagem agora. Tente novamente em instantes."
       );

@@ -12,6 +12,12 @@ const {
   ButtonBuilder,
   ButtonStyle,
   UserSelectMenuBuilder,
+  ContainerBuilder,
+  TextDisplayBuilder,
+  SectionBuilder,
+  ThumbnailBuilder,
+  SeparatorBuilder,
+  resolveColor,
 } = require("discord.js");
 const fs = require("node:fs/promises");
 const path = require("node:path");
@@ -169,23 +175,35 @@ module.exports = {
               .setLabel("Adicionar Membro")
               .setStyle(ButtonStyle.Secondary)
           );
-          const embed = new EmbedBuilder()
-            .setColor(config.panel_embed.color)
-            .setTitle("👋 Bem-vindo ao seu Ticket!")
-            .setDescription(
-              `Enquanto isso, nossa inteligência artificial tentará te ajudar. Por favor, descreva seu problema.`
+          const container = new ContainerBuilder()
+            .setAccentColor(resolveColor(config.panel_embed.color))
+            .addSectionComponents(
+              new SectionBuilder()
+                .addTextDisplayComponents(
+                  new TextDisplayBuilder().setContent(
+                    `### 👋 Bem-vindo ao seu Ticket!\nEnquanto isso, nossa inteligência artificial tentará te ajudar. Por favor, descreva seu problema.`
+                  )
+                )
+                .setThumbnailAccessory(
+                  new ThumbnailBuilder().setURL(
+                    interaction.user.displayAvatarURL()
+                  )
+                )
             )
-            .setThumbnail(interaction.user.displayAvatarURL())
-            .setFooter({
-              text: "Sistema de Tickets",
-              iconURL: client.user.displayAvatarURL(),
-            })
-            .setTimestamp();
+            .addSeparatorComponents(new SeparatorBuilder())
+            .addTextDisplayComponents(
+              new TextDisplayBuilder().setContent(
+                `Olá ${interaction.user}, um membro da equipe de suporte ${supportRolesMention} estará com você em breve.`
+              )
+            )
+            .addActionRowComponents(row)
+            .addTextDisplayComponents(
+              new TextDisplayBuilder().setContent("-# Sistema de Tickets")
+            );
 
           await thread.send({
-            content: `Olá ${interaction.user}, um membro da equipe de suporte ${supportRolesMention} estará com você em breve.`,
-            embeds: [embed],
-            components: [row],
+            flags: MessageFlags.IsComponentsV2,
+            components: [container],
           });
 
           activeTickets[thread.id] = {

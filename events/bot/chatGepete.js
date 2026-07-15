@@ -1,7 +1,7 @@
 const { Events, AttachmentBuilder } = require("discord.js");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const Groq = require("groq-sdk");
 const { withRetry } = require("../../utils/withRetry");
-const geminiApiKey = process.env.GEMINI_API_KEY;
+const groqApiKey = process.env.GROQ_API_KEY;
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -14,10 +14,8 @@ if (!fs.existsSync(historyFilePath)) {
   fs.writeFileSync(historyFilePath, JSON.stringify({}, null, 2));
 }
 
-const genAI = new GoogleGenerativeAI(geminiApiKey);
-const model = genAI.getGenerativeModel({
-  model: "gemini-flash-latest",
-});
+const groq = new Groq({ apiKey: groqApiKey });
+const GROQ_MODEL = "llama-3.3-70b-versatile";
 
 const userCooldowns = new Set();
 
@@ -52,22 +50,23 @@ module.exports = {
         userCooldowns.delete(message.author.id);
       }, 5000);
 
-      const chat = model.startChat({
-        systemInstruction: {
-          role: "user",
-          parts: [
-            {
-              text:
-                systemPromptData.prompt || "Você é um assistente prestativo.",
-            },
-          ],
+      const messages = [
+        {
+          role: "system",
+          content:
+            systemPromptData.prompt || "Você é um assistente prestativo.",
         },
-        history: userHistory,
-      });
+        ...userHistory,
+        { role: "user", content: userMessage },
+      ];
 
-      const result = await withRetry(() => chat.sendMessage(userMessage));
-      const response = await result.response;
-      const responseText = response.text();
+      const completion = await withRetry(() =>
+        groq.chat.completions.create({
+          model: GROQ_MODEL,
+          messages,
+        })
+      );
+      const responseText = completion.choices[0]?.message?.content ?? "";
 
       if (responseText.length > 2000) {
         const buffer = Buffer.from(responseText, "utf-8");
@@ -83,14 +82,14 @@ module.exports = {
         await message.reply(responseText);
       }
 
-      userHistory.push({ role: "user", parts: [{ text: userMessage }] });
-      userHistory.push({ role: "model", parts: [{ text: responseText }] });
+      userHistory.push({ role: "user", content: userMessage });
+      userHistory.push({ role: "assistant", content: responseText });
       channelHistories[message.author.id] = userHistory;
       historyData[message.channel.id] = channelHistories;
       fs.writeFileSync(historyFilePath, JSON.stringify(historyData, null, 2));
     } catch (error) {
       userCooldowns.delete(message.author.id);
-      console.error("[ERRO GEMINI]".red.bold, error);
+      console.error("[ERRO GROQ]".red.bold, error);
       await message.reply(
         "Desculpe, não consegui processar sua solicitação no momento. Tente novamente mais tarde."
       );
