@@ -2,6 +2,7 @@ const { Events } = require("discord.js");
 const fs = require("node:fs");
 const path = require("node:path");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { withRetry } = require("../../utils/withRetry");
 const geminiApiKey = process.env.GEMINI_API_KEY;
 
 const ticketConfigPath = path.join(
@@ -47,7 +48,7 @@ module.exports = {
         history: history,
       });
 
-      const result = await chat.sendMessage(message.content);
+      const result = await withRetry(() => chat.sendMessage(message.content));
       const response = await result.response;
       const text = response.text();
 
@@ -67,6 +68,9 @@ module.exports = {
       }
     } catch (error) {
       console.error("Erro na API do Google AI:", error);
+      await message.reply(
+        "Desculpe, não consegui processar sua mensagem agora. Tente novamente em instantes."
+      );
     }
   },
 };

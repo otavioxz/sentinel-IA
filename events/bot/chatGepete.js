@@ -1,5 +1,6 @@
 const { Events, AttachmentBuilder } = require("discord.js");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { withRetry } = require("../../utils/withRetry");
 const geminiApiKey = process.env.GEMINI_API_KEY;
 const fs = require("node:fs");
 const path = require("node:path");
@@ -64,7 +65,7 @@ module.exports = {
         history: userHistory,
       });
 
-      const result = await chat.sendMessage(userMessage);
+      const result = await withRetry(() => chat.sendMessage(userMessage));
       const response = await result.response;
       const responseText = response.text();
 
