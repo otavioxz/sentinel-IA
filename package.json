@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "axios": "^1.11.0",
+    "colors": "^1.4.0",
+    "discord.js": "^14.21.0",
+    "dotenv": "^17.4.2",
+    "ms": "^2.1.3"
+  }
+}

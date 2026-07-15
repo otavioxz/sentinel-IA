@@ -1,0 +1,12 @@
+{
+  "active": true,
+  "log_channel_id": "id dos canais de logs aqui.",
+  "logs_active": false,
+  "support_roles": [],
+  "panel_embed": {
+    "title": "Central de Atendimento",
+    "description": "Clique no botão abaixo para abrir um ticket e receber suporte.",
+    "color": "#2f3036"
+  },
+  "ai_prompt": "Você é um assistente de suporte virtual amigável e prestativo. Sua função é dar o suporte inicial ao usuário que abriu o ticket. Responda às perguntas dele da melhor forma possível até que um membro da equipe humana chegue para assumir o atendimento. Seja sempre cordial e direto."
+}
