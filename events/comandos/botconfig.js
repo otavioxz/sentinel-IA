@@ -581,7 +581,20 @@ module.exports = {
           .setRequired(false)
           .setPlaceholder("Padrão: online");
         modal.addComponents(
-          new ActionRowBuilder().addComponents(statusTextInput),
+          new ActionRowBuilder().addComponents(statusTextInput)
+        );
+        if (activityType === "Streaming") {
+          const streamUrlInput = new TextInputBuilder()
+            .setCustomId("bot_stream_url_input")
+            .setLabel("URL da live (Twitch ou YouTube)")
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder("Ex: https://twitch.tv/seu_canal")
+            .setRequired(true);
+          modal.addComponents(
+            new ActionRowBuilder().addComponents(streamUrlInput)
+          );
+        }
+        modal.addComponents(
           new ActionRowBuilder().addComponents(onlineStatusInput)
         );
         await interaction.showModal(modal);
@@ -669,11 +682,27 @@ module.exports = {
             .toLowerCase() || "online";
         if (!["online", "idle", "dnd"].includes(onlineStatusStr))
           onlineStatusStr = "online";
+
+        let streamUrl;
+        if (activityTypeStr === "Streaming") {
+          streamUrl = interaction.fields.getTextInputValue(
+            "bot_stream_url_input"
+          );
+          if (!/^https?:\/\/(www\.)?(twitch\.tv|youtube\.com)\/.+/i.test(streamUrl)) {
+            return interaction.reply({
+              content:
+                "Erro: A URL informada precisa ser um link válido do Twitch ou YouTube (ex: https://twitch.tv/seu_canal).",
+              flags: [MessageFlags.Ephemeral],
+            });
+          }
+        }
+
         const dbConfig = JSON.parse(fs.readFileSync(dbConfigPath, "utf-8"));
         dbConfig.status = {
           activityType: activityTypeStr,
           activityName,
           onlineStatus: onlineStatusStr,
+          ...(streamUrl && { streamUrl }),
         };
         fs.writeFileSync(dbConfigPath, JSON.stringify(dbConfig, null, 2));
         let activityType;
@@ -706,8 +735,12 @@ module.exports = {
             onlineStatus = PresenceUpdateStatus.Online;
             break;
         }
+        const activity = { name: activityName, type: activityType };
+        if (activityType === ActivityType.Streaming) {
+          activity.url = streamUrl;
+        }
         client.user.setPresence({
-          activities: [{ name: activityName, type: activityType }],
+          activities: [activity],
           status: onlineStatus,
         });
         await interaction.reply({

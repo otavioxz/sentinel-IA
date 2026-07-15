@@ -54,10 +54,13 @@ module.exports = {
             break;
         }
 
+        const activity = { name: dbConfig.status.activityName, type: activityType };
+        if (activityType === ActivityType.Streaming) {
+          activity.url = dbConfig.status.streamUrl || "https://twitch.tv/discord";
+        }
+
         readyClient.user.setPresence({
-          activities: [
-            { name: dbConfig.status.activityName, type: activityType },
-          ],
+          activities: [activity],
           status: onlineStatus,
         });
         console.log(
