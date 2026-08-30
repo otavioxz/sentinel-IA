@@ -17,6 +17,23 @@ const activeTicketsPath = path.join(
 const groq = new Groq({ apiKey: groqApiKey });
 const GROQ_MODEL = "openai/gpt-oss-120b";
 const ticketHistories = new Map();
+const DISCORD_MAX_LENGTH = 2000;
+
+function splitMessage(text, maxLength = DISCORD_MAX_LENGTH) {
+  const chunks = [];
+  let remaining = text;
+
+  while (remaining.length > maxLength) {
+    let splitIndex = remaining.lastIndexOf("\n", maxLength);
+    if (splitIndex === -1) splitIndex = maxLength;
+
+    chunks.push(remaining.slice(0, splitIndex));
+    remaining = remaining.slice(splitIndex).trimStart();
+  }
+
+  if (remaining) chunks.push(remaining);
+  return chunks;
+}
 
 module.exports = {
   name: Events.MessageCreate,
@@ -56,7 +73,11 @@ module.exports = {
       const text = completion.choices[0]?.message?.content;
 
       if (text) {
-        await message.reply(text);
+        const chunks = splitMessage(text);
+        await message.reply(chunks[0]);
+        for (let i = 1; i < chunks.length; i++) {
+          await message.channel.send(chunks[i]);
+        }
 
         history.push({ role: "user", content: message.content });
         history.push({ role: "assistant", content: text });
